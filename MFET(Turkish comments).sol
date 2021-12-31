@@ -38,6 +38,11 @@ contract MyFirstToken is ERC20Interface {
     address public founder; // Tokenlerin ilk başta gideceği adresi tanımladık. Zorunlu değil ama kullanışlı?
     mapping(address => uint) public balances;   // Her adreste varsayılan olarak 0 token tanımlı oluyor. Hangi adreste ne kadar token var depolayabilmek için tanımlıyoruz.
 
+    // Kendi hesabındaki tokenlerin bir kısmını başkasının harcamasına izin vermek?
+    mapping(address => mapping(address => uint)) allowed;
+    // 0x111... (owner) allows 0x222... (the spender) --- 100 tokens
+    // allowed[0x111][0x222] = 100;
+
     constructor() {
         totalSupply = 1000000;
         founder = msg.sender;
@@ -45,12 +50,12 @@ contract MyFirstToken is ERC20Interface {
     }
 
     // Herhangi bir adresin elinde kaç token var görmek için kullanılan fonksiyon.
-    function balanceOf(address _owner) external view returns (uint256 balance) {
+    function balanceOf(address _owner) public view override returns (uint256 balance) {
         return balances[_owner];
     }
 
     // Transfer yapmak için gereken fonksiyon.
-    function transfer(address _to, uint256 _value) external returns (bool success) {
+    function transfer(address _to, uint256 _value) public override returns (bool success) {
         require(balances[msg.sender] >= _value);    // Elinde bulunan tokenden fazla token göderememesi için
 
         balances[_to] += _value;
@@ -59,5 +64,31 @@ contract MyFirstToken is ERC20Interface {
 
         return true;
     }
+
+    function transferFrom(address _from, address _to, uint256 _value) public override returns (bool success) {
+        require(allowed[_from][_to] >= _value);
+        require(balances[_from] >= _value);
+
+        balances[_from] -= _value;
+        balances[_to] += _value;
+        allowed[_from][_to] -= _value;
+
+        return true;
+    }
+
+    function approve(address _spender, uint256 _value) public override returns (bool success) {
+        require(balances[msg.sender] >= _value);
+        require(_value > 0);
+
+        allowed[msg.sender][_spender] = _value;
+
+        emit Approval(msg.sender, _spender, _value);
+        return true;
+    }
+
+    function allowance(address _owner, address _spender) public override view returns (uint256 remaining) {
+        return allowed[_owner][_spender];
+    }
+
     
 }
